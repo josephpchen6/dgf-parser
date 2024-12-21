@@ -7,24 +7,44 @@
 // process all children, add pq
 // pop pq until empty; write to csv
 
+void processChild(xmlNodePtr child) {
+    // pq of pairs
+    child = child -> next;
+    printf("market name: %s\n", (char *)xmlNodeGetContent(child));
+    // add this as the pq key, or whatever
+    for (int i = 0; i < 5; i++)
+        child = child -> next;
+    printf("fliff odds: %s\n", (char *)xmlNodeGetContent(child));
+    // calculate
+    for (int i = 0; i < 5; i++)
+        child = child -> next;
+    if (child -> children -> children) {
+        printf("FanDuel odds: %s\n", (char *)xmlNodeGetContent(child -> children -> children -> children -> children -> next));
+    }
+    // calculate
+    child = child -> next;
+    if (child -> children -> children) {
+        printf("DraftKings odds: %s\n", (char *)xmlNodeGetContent(child -> children -> children -> children -> children -> next));
+    }
+    // calculate
+
+    // this seems like a really goon way to traverse a linked list but idk if there's a better way
+}
+
 void processAllChildren(xmlNodePtr parent) {
     // add pq to this
     if (parent == NULL) {
         fprintf(stderr, "Error: Parent node is NULL.\n");
         return;
     }
-
-    printf("Direct children of <%s>:\n", parent->name);
-
+    
     for (xmlNodePtr child = parent->children; child; child = child->next) {
         // Ensure the child is an element node
         if (child->type == XML_ELEMENT_NODE) {
             printf("  <%s>: %s\n", child->name, (char *)xmlNodeGetContent(child));
             // printf("first td: %s\n", (char *)xmlNodeGetContent(child));
-            printf("first td: %s\n", (char *)xmlNodeGetContent(child -> children));
-            printf("second td: %s\n", (char *)xmlNodeGetContent(child -> children -> next));
-            printf("third td: %s\n", (char *)xmlNodeGetContent(child -> children -> next -> next));
-            printf("fourth td: %s\n", (char *)xmlNodeGetContent(child -> children -> next -> next -> next));
+            processChild(child -> children); // name
+            // note: this is redundant code. should probably wrap this in a helper.
             // printf("first td: %s\n", (char *)xmlNodeGetContent(child -> next -> next));
             // printDirectChildren(child);
         }
