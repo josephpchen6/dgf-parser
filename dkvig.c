@@ -1,28 +1,22 @@
 #include <stdio.h>
 
 int main() {
-    FILE *file = fopen("dkvig.bin", "wb");
-    if (!file) {
-        perror("Could not open file");
-        return 1;
-    }
+    FILE *dknba = fopen("dknba.bin", "wb");
+    int nbaVig[][2] = {
+        {-108, -112}, {-115, -115}, {-110, -120}, {-105, -125}, {100, -130}, {105, -135}, {110, -140}, {114, -145}, {120, -154},
+        {124, -160}, {130, -166}, {135, -175}, {140, -180}, {145, -188}, {150, -195}, {154, -200}, {155, -205}, {160, -210},
+        {165, -215}, {170, -220}, {175, -230}, {180, -238}, {185, -245}, {190, -250}, {200, -270}, {205, -275}
+    }; // NBA moneyline markets are generally tighter, but they never have value anyway
+    for (size_t i = 0; i < sizeof(nbaVig); i++)
+        fwrite(nbaVig[i], sizeof(int), 2, dknba);
+    fclose(dknba);
 
-    int data[][2] = {
-        {-115, -115}, {-110, -120}, {-105, -125}, {100, -130}, {105, -135}, {110, -140}, {114, -145}, {120, -154}, {124, -160},
-        {130, -166}, {135, -175}, {140, -180}
-    };
-    for (size_t i = 0; i < sizeof(data); i++) {
-        fwrite(data[i], sizeof(int), 2, file);
-    }
-
-    fclose(file);
+    FILE *dknfl = fopen("dknfl.bin", "wb");
+    int nflVig[][2] = {
+        {-108, -112}, {-115, -115}, {-110, -120}, {-650, 390}, {-670, 400}, {-980, 515}
+    }; // NBA moneyline markets are generally tighter, but they never have value anyway
+    for (size_t i = 0; i < sizeof(nbaVig); i++)
+        fwrite(nflVig[i], sizeof(int), 2, dknfl);
+    fclose(dknfl);
     return 0;
 }
-
-
-// -145/+114 = 31
-// -154/+120 = 34
-// -160/+124 = 36
-// -166/+130 = 36
-// -175/+135 = 40
-// -180/+140 = 40

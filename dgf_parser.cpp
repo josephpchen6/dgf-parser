@@ -9,31 +9,43 @@
 // process all children by adding to vector, write to csv
 
 // define some minimum threshold
-// read from json file for vig data?
+// new idea:
+// we check for specific vigs in specific leagues (NFL, NBA, etc.)
+// if none of these are met, we go into a general formula
 
-#define THRESHOLD = -20
+// do we even need a dict?
 
-std::unordered_map<int, int> dkVig;
+// other approach: see if vig is within a certain range
+// i.e. if vig is between -110 to +110, then we just put 30 points of vig
+
+#define THRESHOLD -20
+
+std::unordered_map<int, int> dkNba;
+std::unordered_map<int, int> dkNfl;
 
 void initDkMap() {
-    FILE* fp = fopen("dkvig.bin", "rb");
-    if (!fp) {
-        perror("Could not open file");
-        exit(1);
-    }
     int key, value;
+    FILE* fp = fopen("dknba.bin", "rb");
     while (fread(&key, sizeof(int), 1, fp) == 1 && fread(&value, sizeof(int), 1, fp) == 1) {
-        dkVig[key] = value;
-        dkVig[value] = key;
+        dkNba[key] = value;
+        dkNba[value] = key;
+    }
+    fclose(fp);
+    fp = fopen("dknfl.bin", "rb");
+    while (fread(&key, sizeof(int), 1, fp) == 1 && fread(&value, sizeof(int), 1, fp) == 1) {
+        dkNfl[key] = value;
+        dkNfl[value] = key;
     }
     fclose(fp);
 }
 
 void processChild(xmlNodePtr child, std::vector<std::pair<int, char*> >& data) {
     child = child -> next;
-    int bestOdds = INT_MIN;
-    char* marketName = (char*)xmlNodeGetContent(child); // 1st index
-    for (int i = 0; i < 5; i++)
+    int bestOdds = -10000;
+    char* eventData = (char*)xmlNodeGetContent(child); // 1st index
+    child = child -> next;
+    char* league = (char*)xmlNodeGetContent(child); // 2nd index
+    for (int i = 0; i < 4; i++)
         child = child -> next;
     int fliffOdds = atoi((char *)xmlNodeGetContent(child)); // 6th index
     for (int i = 0; i < 5; i++)
@@ -41,21 +53,58 @@ void processChild(xmlNodePtr child, std::vector<std::pair<int, char*> >& data) {
     // pinnacle would be the 10th index
     if (child -> children -> children) {
         int fdOdds = atoi((char *)xmlNodeGetContent(child -> children -> children -> children -> children -> next)); // 11th index
-        if (fdOdds < bestOdds)
+        if (fdOdds > 0) {
+            if (fdOdds <= 110) {
+                fdOdds = (-1 * fdOdds) - 30;
+            } else {
+                // use formula
+                fdOdds = INT_MIN;
+            }
+        } else {
+            // say we have 110
+            // the ideal outcome is 120
+            // 
+            if (fdOdds >= -140) {
+                int diff = fdOdds + 130;
+                if (diff < 0) {
+                    fdOdds = 100 - diff;
+                } else {
+                    fdOdds = -100 - diff;
+                }
+            } else {
+                // use formula
+                fdOdds = INT_MIN;
+            }
+        }
+        if (fdOdds > bestOdds)
             bestOdds = fdOdds;
     }
     child = child -> next;
     if (child -> children -> children) {
         int dkOdds = atoi((char *)xmlNodeGetContent(child -> children -> children -> children -> children -> next)); // 12th index
-        if (dkVig.count(dkOdds)) {
-            if (dkVig[dkOdds] > bestOdds)
-            bestOdds = dkVig[dkOdds];
-        } else {
-            printf("Corresponding odds not found: %d\n", dkOdds);
+        if (!strncmp(league, "NBA", 4)) {
+            if (dkNba.count(dkOdds)) {
+                if (dkNba[dkOdds] > bestOdds) {
+                    bestOdds = dkNba[dkOdds];
+                }
+            } else {
+                printf("Corresponding NBA odds not found: %d\n", dkOdds);
+            }
+        } else if (!strncmp(league, "NFL", 4)) {
+            if (dkNfl.count(dkOdds)) {
+                if (dkNfl[dkOdds] > bestOdds) {
+                    bestOdds = dkNfl[dkOdds];
+                }
+            } else {
+                printf("Corresponding NFL odds not found: %d\n", dkOdds);
+            } 
         }
     }
-    if (bestOdds != INT_MIN)
-        printf("market name: %s\nfliff odds: %d\nbest odds: %d\n", marketName, fliffOdds, bestOdds);
+    int arb = fliffOdds + bestOdds;
+    if (arb > THRESHOLD)
+        data.push_back(std::make_pair(arb, eventData));
+        // printf("market name: %s\nleague: %s\nfliff odds: %d\nbest odds: %d\n", eventData, league, fliffOdds, bestOdds);
+        
     // this seems like a really goon way to traverse a linked list but idk if there's a better way
 }
 
@@ -126,6 +175,11 @@ int main() {
     xmlCleanupParser();
 
     // sort vector
+    std::sort(data.rbegin(), data.rend());
+
+    for (auto d : data) {
+        printf("%d, %s\n", d.first, d.second);
+    }
     // write to csv
 
     return 0;
