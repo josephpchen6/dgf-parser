@@ -1,60 +1,62 @@
-// gcc -o parser "dgf_parser.cpp" -lxml2
 #include <stdio.h>
 #include <libxml/HTMLparser.h>
 #include <libxml/xpath.h>
 #include <cstdlib>
 #include <utility>
-#include <queue>
-
+#include <vector>
+#include <unordered_map>
 // steps:
-// process all children, add pq
-// pop pq until empty; write to csv
+// process all children by adding to vector, write to csv
 
-// define some minimum threshold???
-// read from json file, ig
+// define some minimum threshold
+// read from json file for vig data?
 
-void processChild(xmlNodePtr child) {
-    // pq of pairs
-    child = child -> next;
-    printf("market name: %s\n", (char *)xmlNodeGetContent(child));
-    // add this as the pq key, or whatever
-    for (int i = 0; i < 5; i++)
-        child = child -> next;
-    printf("fliff odds: %s\n", (char *)xmlNodeGetContent(child));
-    // calculate
-    for (int i = 0; i < 5; i++)
-        child = child -> next;
-    if (child -> children -> children) {
-        printf("FanDuel odds: %s\n", (char *)xmlNodeGetContent(child -> children -> children -> children -> children -> next));
+#define THRESHOLD = -20
+
+std::unordered_map<int, int> dkVig;
+
+void initDkMap() {
+    FILE* fp = fopen("dkvig.bin", "rb");
+    if (!fp) {
+        perror("Could not open file");
+        exit(1);
     }
-    // calculate
-    child = child -> next;
-    if (child -> children -> children) {
-        printf("DraftKings odds: %s\n", (char *)xmlNodeGetContent(child -> children -> children -> children -> children -> next));
+    int key, value;
+    while (fread(&key, sizeof(int), 1, fp) == 1 && fread(&value, sizeof(int), 1, fp) == 1) {
+        dkVig[key] = value;
+        dkVig[value] = key;
     }
-    // calculate
-
-    // this seems like a really goon way to traverse a linked list but idk if there's a better way
+    fclose(fp);
 }
 
-void processAllChildren(xmlNodePtr parent) {
-    // add pq to this
-    if (parent == NULL) {
-        fprintf(stderr, "Error: Parent node is NULL.\n");
-        return;
+void processChild(xmlNodePtr child, std::vector<std::pair<int, char*> >& data) {
+    child = child -> next;
+    int bestOdds = INT_MIN;
+    char* marketName = (char*)xmlNodeGetContent(child); // 1st index
+    for (int i = 0; i < 5; i++)
+        child = child -> next;
+    int fliffOdds = atoi((char *)xmlNodeGetContent(child)); // 6th index
+    for (int i = 0; i < 5; i++)
+        child = child -> next;
+    // pinnacle would be the 10th index
+    if (child -> children -> children) {
+        int fdOdds = atoi((char *)xmlNodeGetContent(child -> children -> children -> children -> children -> next)); // 11th index
+        if (fdOdds < bestOdds)
+            bestOdds = fdOdds;
     }
-    
-    for (xmlNodePtr child = parent->children; child; child = child->next) {
-        // Ensure the child is an element node
-        if (child->type == XML_ELEMENT_NODE) {
-            printf("  <%s>: %s\n", child->name, (char *)xmlNodeGetContent(child));
-            // printf("first td: %s\n", (char *)xmlNodeGetContent(child));
-            processChild(child -> children); // name
-            // note: this is redundant code. should probably wrap this in a helper.
-            // printf("first td: %s\n", (char *)xmlNodeGetContent(child -> next -> next));
-            // printDirectChildren(child);
+    child = child -> next;
+    if (child -> children -> children) {
+        int dkOdds = atoi((char *)xmlNodeGetContent(child -> children -> children -> children -> children -> next)); // 12th index
+        if (dkVig.count(dkOdds)) {
+            if (dkVig[dkOdds] > bestOdds)
+            bestOdds = dkVig[dkOdds];
+        } else {
+            printf("Corresponding odds not found: %d\n", dkOdds);
         }
     }
+    if (bestOdds != INT_MIN)
+        printf("market name: %s\nfliff odds: %d\nbest odds: %d\n", marketName, fliffOdds, bestOdds);
+    // this seems like a really goon way to traverse a linked list but idk if there's a better way
 }
 
 // Custom read function to read from a FILE pointer
@@ -69,8 +71,7 @@ int fileCloseCallback(void *context) {
     return fclose(file);
 }
 
-int main(int argc, char *argv[]) {
-    
+int main() {
     htmlDocPtr doc = NULL;
     FILE *fp = fopen("sample.html", "r");
     fseek(fp, 0, SEEK_END);
@@ -103,10 +104,17 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+    initDkMap();
+    std::vector<std::pair<int, char*> > data;
     xmlNodeSetPtr nodes = xpathObj->nodesetval;
     if (nodes && nodes->nodeNr > 0) {
         xmlNodePtr table = nodes->nodeTab[0];
-        processAllChildren(table);
+        if (table) {
+            for (xmlNodePtr child = table->children; child; child = child->next) {
+                if (child->type == XML_ELEMENT_NODE)
+                    processChild(child -> children, data);
+            }
+        }
     } else {
         printf("No <table> found for the XPath query: %s\n", xpathExpr);
     }
@@ -116,6 +124,9 @@ int main(int argc, char *argv[]) {
     xmlXPathFreeContext(xpathCtx);
     xmlFreeDoc(doc);
     xmlCleanupParser();
+
+    // sort vector
+    // write to csv
 
     return 0;
 }
