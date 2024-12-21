@@ -2,10 +2,16 @@
 #include <stdio.h>
 #include <libxml/HTMLparser.h>
 #include <libxml/xpath.h>
+#include <cstdlib>
+#include <utility>
+#include <queue>
 
 // steps:
 // process all children, add pq
 // pop pq until empty; write to csv
+
+// define some minimum threshold???
+// read from json file, ig
 
 void processChild(xmlNodePtr child) {
     // pq of pairs
@@ -51,15 +57,35 @@ void processAllChildren(xmlNodePtr parent) {
     }
 }
 
-int main(int argc, char *argv[]) {
+// Custom read function to read from a FILE pointer
+int fileReadCallback(void *context, char *buffer, int len) {
+    FILE *file = (FILE *)context;
+    return fread(buffer, 1, len, file);
+}
 
-    // Parse the HTML file
-    htmlDocPtr doc = htmlReadFile("sample.html", NULL, HTML_PARSE_NOERROR | HTML_PARSE_NOWARNING);
+// Custom close function to close the FILE pointer
+int fileCloseCallback(void *context) {
+    FILE *file = (FILE *)context;
+    return fclose(file);
+}
+
+int main(int argc, char *argv[]) {
+    
+    htmlDocPtr doc = NULL;
+    FILE *fp = fopen("sample.html", "r");
+    fseek(fp, 0, SEEK_END);
+    if (ftell(fp)) {
+        puts("sample.html is non empty; reading from file...");
+        doc = htmlReadFile("sample.html", NULL, HTML_PARSE_NOERROR | HTML_PARSE_NOWARNING);
+    } else {
+        puts("sample.html is empty; reading from clipboard...");
+        fp = popen("pbpaste", "r");
+        doc = htmlReadIO(fileReadCallback, fileCloseCallback, fp, NULL, NULL, HTML_PARSE_NOERROR | HTML_PARSE_NOWARNING);
+    }
     if (doc == NULL) {
         fprintf(stderr, "Error: Could not parse file\n");
         return 1;
     }
-
     // XPath to find the <table> element
     xmlXPathContextPtr xpathCtx = xmlXPathNewContext(doc);
     if (xpathCtx == NULL) {
