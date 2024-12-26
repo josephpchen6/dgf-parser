@@ -17,26 +17,35 @@
 
 // other approach: see if vig is within a certain range
 // i.e. if vig is between -110 to +110, then we just put 30 points of vig
+// fair assessment: player props will always have a relatively consistent amount of vig; they're also where most of the value is.
+// we hard code these values, then use a line/curve/whatever of best fit for all else. This can also bake in moneyline/spread/etc
 
-#define THRESHOLD -20
+#define THRESHOLD -15
 
 std::unordered_map<int, int> dkNba;
 std::unordered_map<int, int> dkNfl;
+std::unordered_map<int, int> fdNba;
 
-void initDkMap() {
+void initMaps() {
     int key, value;
-    FILE* fp = fopen("dknba.bin", "rb");
-    while (fread(&key, sizeof(int), 1, fp) == 1 && fread(&value, sizeof(int), 1, fp) == 1) {
+    FILE* dkNbaFp = fopen("dknba.bin", "rb");
+    while (fread(&key, sizeof(int), 1, dkNbaFp) == 1 && fread(&value, sizeof(int), 1, dkNbaFp) == 1) {
         dkNba[key] = value;
         dkNba[value] = key;
     }
-    fclose(fp);
-    fp = fopen("dknfl.bin", "rb");
-    while (fread(&key, sizeof(int), 1, fp) == 1 && fread(&value, sizeof(int), 1, fp) == 1) {
+    fclose(dkNbaFp);
+    FILE* dkNflFp = fopen("dknfl.bin", "rb");
+    while (fread(&key, sizeof(int), 1, dkNflFp) == 1 && fread(&value, sizeof(int), 1, dkNflFp) == 1) {
         dkNfl[key] = value;
         dkNfl[value] = key;
     }
-    fclose(fp);
+    fclose(dkNflFp);
+    FILE* fdNbaFp = fopen("fdnba.bin", "rb");
+    while (fread(&key, sizeof(int), 1, fdNbaFp) == 1 && fread(&value, sizeof(int), 1, fdNbaFp) == 1) {
+        fdNba[key] = value;
+        fdNba[value] = key;
+    }
+    fclose(fdNbaFp);
 }
 
 void processChild(xmlNodePtr child, std::vector<std::pair<int, char*> >& data) {
@@ -53,31 +62,17 @@ void processChild(xmlNodePtr child, std::vector<std::pair<int, char*> >& data) {
     // pinnacle would be the 10th index
     if (child -> children -> children) {
         int fdOdds = atoi((char *)xmlNodeGetContent(child -> children -> children -> children -> children -> next)); // 11th index
-        if (fdOdds > 0) {
-            if (fdOdds <= 110) {
-                fdOdds = (-1 * fdOdds) - 30;
-            } else {
-                // use formula
-                fdOdds = INT_MIN;
-            }
-        } else {
-            // say we have 110
-            // the ideal outcome is 120
-            // 
-            if (fdOdds >= -140) {
-                int diff = fdOdds + 130;
-                if (diff < 0) {
-                    fdOdds = 100 - diff;
-                } else {
-                    fdOdds = -100 - diff;
+        if (!strncmp(league, "NBA", 4)) {
+            if (fdNba.count(fdOdds)) {
+                if (fdNba[fdOdds] > bestOdds) {
+                    bestOdds = fdNba[fdOdds];
                 }
             } else {
-                // use formula
-                fdOdds = INT_MIN;
+                printf("NOTE: Corresponding FD NBA odds not found: %d\n", fdOdds);
             }
         }
-        if (fdOdds > bestOdds)
-            bestOdds = fdOdds;
+        // if (fdOdds > bestOdds)
+        //     bestOdds = fdOdds;
     }
     child = child -> next;
     if (child -> children -> children) {
@@ -88,7 +83,7 @@ void processChild(xmlNodePtr child, std::vector<std::pair<int, char*> >& data) {
                     bestOdds = dkNba[dkOdds];
                 }
             } else {
-                printf("Corresponding NBA odds not found: %d\n", dkOdds);
+                printf("NOTE: Corresponding DK NBA odds not found: %d\n", dkOdds);
             }
         } else if (!strncmp(league, "NFL", 4)) {
             if (dkNfl.count(dkOdds)) {
@@ -96,12 +91,12 @@ void processChild(xmlNodePtr child, std::vector<std::pair<int, char*> >& data) {
                     bestOdds = dkNfl[dkOdds];
                 }
             } else {
-                printf("Corresponding NFL odds not found: %d\n", dkOdds);
+                printf("NOTE: Corresponding DK NFL odds not found: %d\n", dkOdds);
             } 
         }
     }
     int arb = fliffOdds + bestOdds;
-    if (arb > THRESHOLD)
+    if (arb >= THRESHOLD)
         data.push_back(std::make_pair(arb, eventData));
         // printf("market name: %s\nleague: %s\nfliff odds: %d\nbest odds: %d\n", eventData, league, fliffOdds, bestOdds);
         
@@ -136,7 +131,7 @@ int main() {
         fprintf(stderr, "Error: Could not parse file\n");
         return 1;
     }
-    // XPath to find the <table> element
+    
     xmlXPathContextPtr xpathCtx = xmlXPathNewContext(doc);
     if (xpathCtx == NULL) {
         fprintf(stderr, "Error: Unable to create XPath context\n");
@@ -152,8 +147,8 @@ int main() {
         xmlFreeDoc(doc);
         return 1;
     }
-
-    initDkMap();
+    
+    initMaps();
     std::vector<std::pair<int, char*> > data;
     xmlNodeSetPtr nodes = xpathObj->nodesetval;
     if (nodes && nodes->nodeNr > 0) {
@@ -167,7 +162,7 @@ int main() {
     } else {
         printf("No <table> found for the XPath query: %s\n", xpathExpr);
     }
-
+    
     // Cleanup
     xmlXPathFreeObject(xpathObj);
     xmlXPathFreeContext(xpathCtx);
