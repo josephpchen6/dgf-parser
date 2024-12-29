@@ -5,47 +5,34 @@
 #include <utility>
 #include <vector>
 #include <unordered_map>
-// steps:
-// process all children by adding to vector, write to csv
 
-// define some minimum threshold
-// new idea:
-// we check for specific vigs in specific leagues (NFL, NBA, etc.)
-// if none of these are met, we go into a general formula
-
-// do we even need a dict?
-
-// other approach: see if vig is within a certain range
-// i.e. if vig is between -110 to +110, then we just put 30 points of vig
-// fair assessment: player props will always have a relatively consistent amount of vig; they're also where most of the value is.
-// we hard code these values, then use a line/curve/whatever of best fit for all else. This can also bake in moneyline/spread/etc
+// TO-DO:
+// ncaab maps
 
 #define THRESHOLD -15
+// all lines below this threshold (i.e. more negative than) will be ignored
+// decrease the threshold to see more potential arbs, increase to see less
 
 std::unordered_map<int, int> dkNba;
 std::unordered_map<int, int> dkNfl;
 std::unordered_map<int, int> fdNba;
+std::unordered_map<int, int> fdNcaaf;
+
+void initMap(std::unordered_map<int, int>& to_fill, const char* filename) {
+    int key, value;
+    FILE* fp = fopen(filename, "rb");
+    while (fread(&key, sizeof(int), 1, fp) == 1 && fread(&value, sizeof(int), 1, fp) == 1) {
+        to_fill[key] = value;
+        to_fill[value] = key;
+    }
+    fclose(fp);
+}
 
 void initMaps() {
-    int key, value;
-    FILE* dkNbaFp = fopen("dknba.bin", "rb");
-    while (fread(&key, sizeof(int), 1, dkNbaFp) == 1 && fread(&value, sizeof(int), 1, dkNbaFp) == 1) {
-        dkNba[key] = value;
-        dkNba[value] = key;
-    }
-    fclose(dkNbaFp);
-    FILE* dkNflFp = fopen("dknfl.bin", "rb");
-    while (fread(&key, sizeof(int), 1, dkNflFp) == 1 && fread(&value, sizeof(int), 1, dkNflFp) == 1) {
-        dkNfl[key] = value;
-        dkNfl[value] = key;
-    }
-    fclose(dkNflFp);
-    FILE* fdNbaFp = fopen("fdnba.bin", "rb");
-    while (fread(&key, sizeof(int), 1, fdNbaFp) == 1 && fread(&value, sizeof(int), 1, fdNbaFp) == 1) {
-        fdNba[key] = value;
-        fdNba[value] = key;
-    }
-    fclose(fdNbaFp);
+    initMap(dkNba, "dknba.bin");
+    initMap(dkNfl, "dknfl.bin");
+    initMap(fdNba, "fdnba.bin");
+    initMap(fdNcaaf, "fdncaaf.bin");
 }
 
 void processChild(xmlNodePtr child, std::vector<std::pair<int, char*> >& data) {
@@ -68,11 +55,17 @@ void processChild(xmlNodePtr child, std::vector<std::pair<int, char*> >& data) {
                     bestOdds = fdNba[fdOdds];
                 }
             } else {
-                printf("NOTE: Corresponding FD NBA odds not found: %d\n", fdOdds);
+                printf("[WARN] Corresponding FD NBA odds not found: %d\n", fdOdds);
+            }
+        } else if (!strncmp(league, "NCAAF", 6)) {
+            if (fdNcaaf.count(fdOdds)) {
+                if (fdNcaaf[fdOdds] > bestOdds) {
+                    bestOdds = fdNcaaf[fdOdds];
+                }
+            } else {
+                printf("[WARN] Corresponding FD NCAAF odds not found: %d\n", fdOdds);
             }
         }
-        // if (fdOdds > bestOdds)
-        //     bestOdds = fdOdds;
     }
     child = child -> next;
     if (child -> children -> children) {
@@ -83,7 +76,7 @@ void processChild(xmlNodePtr child, std::vector<std::pair<int, char*> >& data) {
                     bestOdds = dkNba[dkOdds];
                 }
             } else {
-                printf("NOTE: Corresponding DK NBA odds not found: %d\n", dkOdds);
+                printf("[WARN] Corresponding DK NBA odds not found: %d\n", dkOdds);
             }
         } else if (!strncmp(league, "NFL", 4)) {
             if (dkNfl.count(dkOdds)) {
@@ -91,7 +84,7 @@ void processChild(xmlNodePtr child, std::vector<std::pair<int, char*> >& data) {
                     bestOdds = dkNfl[dkOdds];
                 }
             } else {
-                printf("NOTE: Corresponding DK NFL odds not found: %d\n", dkOdds);
+                printf("[WARN] Corresponding DK NFL odds not found: %d\n", dkOdds);
             } 
         }
     }
@@ -170,12 +163,10 @@ int main() {
     xmlCleanupParser();
 
     // sort vector
-    std::sort(data.rbegin(), data.rend());
+    std::sort(data.begin(), data.end());
 
-    for (auto d : data) {
+    for (const std::pair<int, char*>& d : data)
         printf("%d, %s\n", d.first, d.second);
-    }
-    // write to csv
 
     return 0;
 }
