@@ -8,10 +8,13 @@
 
 // TO-DO:
 // ncaab maps
+// add pinnacle
 
 #define THRESHOLD -15
 // all lines below this threshold (i.e. more negative than) will be ignored
 // decrease the threshold to see more potential arbs, increase to see less
+
+// NOTE: a 200 arb = 0 (+100/+100)
 
 std::unordered_map<int, int> dkNba;
 std::unordered_map<int, int> dkNfl;
@@ -33,6 +36,9 @@ void initMaps() {
     initMap(dkNfl, "dknfl.bin");
     initMap(fdNba, "fdnba.bin");
     initMap(fdNcaaf, "fdncaaf.bin");
+        // for (auto d : fdNcaaf) {
+        //     printf("%d : %d\n", d.first, d.second);
+        // }
 }
 
 void processChild(xmlNodePtr child, std::vector<std::pair<int, char*> >& data) {
@@ -58,6 +64,7 @@ void processChild(xmlNodePtr child, std::vector<std::pair<int, char*> >& data) {
                 printf("[WARN] Corresponding FD NBA odds not found: %d\n", fdOdds);
             }
         } else if (!strncmp(league, "NCAAF", 6)) {
+                // printf("%d\n", fdOdds);
             if (fdNcaaf.count(fdOdds)) {
                 if (fdNcaaf[fdOdds] > bestOdds) {
                     bestOdds = fdNcaaf[fdOdds];
@@ -166,7 +173,7 @@ int main() {
     std::sort(data.begin(), data.end());
 
     for (const std::pair<int, char*>& d : data)
-        printf("%d, %s\n", d.first, d.second);
+        printf("%d\t%s\n", d.first, d.second);
 
     return 0;
 }
