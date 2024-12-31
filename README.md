@@ -1,3 +1,5 @@
+# DGF Parser
+
 Script to identify potential arbs using the Daily Grind Fantasy Optimizer. Written in C(++), but there's a semi-working Python script in there if you're a loser.
 
 Steps:
