@@ -4,6 +4,9 @@ from bs4 import BeautifulSoup
 import pandas as pd
 from datetime import datetime
 
+filepath = "./"
+# REPLACE WITH WHEREVER IS CONVENIENT
+
 """
 - I only care about the lines of 2 books: FanDuel, DraftKings. All other books have too much vig.
     (Except for Pinnacle for non player props)
@@ -80,7 +83,7 @@ def main():
     output = pd.DataFrame(lines)
     output["Diff"] = output["Fliff Odds"] + output["Best Alternative"]
     output.sort_values("Diff", ascending = False, inplace = True)
-    output.to_csv(f"/Users/josephchen/Desktop/projections/{datetime.now().strftime('%Y-%m-%d;%H-%M')}_DGF.csv")
+    output.to_csv(filepath + datetime.now().strftime('%Y-%m-%d;%H-%M') + "_DGF.csv")
     print("Done!")
 
 main()
