@@ -16,10 +16,16 @@
 
 // NOTE: a 200 arb = 0 (+100/+100)
 
+std::unordered_map<int, int> fdNba;
+std::unordered_map<int, int> fdNfl;
+std::unordered_map<int, int> fdNcaaf;
+std::unordered_map<int, int> fdNcaab;
+std::unordered_map<int, int> fdNhl;
+
 std::unordered_map<int, int> dkNba;
 std::unordered_map<int, int> dkNfl;
-std::unordered_map<int, int> fdNba;
-std::unordered_map<int, int> fdNcaaf;
+std::unordered_map<int, int> dkNcaaf;
+std::unordered_map<int, int> dkNhl;
 
 void initMap(std::unordered_map<int, int>& to_fill, const char* filename) {
     int key, value;
@@ -32,13 +38,16 @@ void initMap(std::unordered_map<int, int>& to_fill, const char* filename) {
 }
 
 void initMaps() {
+    initMap(fdNba, "fdnba.bin");
+    initMap(fdNfl, "fdnfl.bin");
+    initMap(fdNcaaf, "fdncaaf.bin");
+    initMap(fdNcaab, "fdncaab.bin");
+    initMap(fdNhl, "fdnhl.bin");
+
     initMap(dkNba, "dknba.bin");
     initMap(dkNfl, "dknfl.bin");
-    initMap(fdNba, "fdnba.bin");
-    initMap(fdNcaaf, "fdncaaf.bin");
-        // for (auto d : fdNcaaf) {
-        //     printf("%d : %d\n", d.first, d.second);
-        // }
+    initMap(dkNcaaf, "dkncaaf.bin");
+    initMap(dkNhl, "dknhl.bin");
 }
 
 void processChild(xmlNodePtr child, std::vector<std::pair<int, char*> >& data) {
@@ -57,21 +66,43 @@ void processChild(xmlNodePtr child, std::vector<std::pair<int, char*> >& data) {
         int fdOdds = atoi((char *)xmlNodeGetContent(child -> children -> children -> children -> children -> next)); // 11th index
         if (!strncmp(league, "NBA", 4)) {
             if (fdNba.count(fdOdds)) {
-                if (fdNba[fdOdds] > bestOdds) {
+                if (fdNba[fdOdds] > bestOdds)
                     bestOdds = fdNba[fdOdds];
-                }
             } else {
                 printf("[WARN] Corresponding FD NBA odds not found: %d\n", fdOdds);
+            }
+        } else if (!strncmp(league, "NFL", 4)) {
+                // printf("%d\n", fdOdds);
+            if (fdNfl.count(fdOdds)) {
+                if (fdNfl[fdOdds] > bestOdds)
+                    bestOdds = fdNfl[fdOdds];
+            } else {
+                printf("[WARN] Corresponding FD NFL odds not found: %d\n", fdOdds);
             }
         } else if (!strncmp(league, "NCAAF", 6)) {
                 // printf("%d\n", fdOdds);
             if (fdNcaaf.count(fdOdds)) {
-                if (fdNcaaf[fdOdds] > bestOdds) {
+                if (fdNcaaf[fdOdds] > bestOdds)
                     bestOdds = fdNcaaf[fdOdds];
-                }
             } else {
                 printf("[WARN] Corresponding FD NCAAF odds not found: %d\n", fdOdds);
             }
+        } else if (!strncmp(league, "NCAAB", 6)) {
+            if (fdNcaab.count(fdOdds)) {
+                if (fdNcaab[fdOdds] > bestOdds)
+                    bestOdds = fdNcaab[fdOdds];
+            } else {
+                printf("[WARN] Corresponding FD NCAAB odds not found: %d\n", fdOdds);
+            }
+        } else if (!strncmp(league, "NHL", 4)) {
+            if (fdNhl.count(fdOdds)) {
+                if (fdNhl[fdOdds] > bestOdds)
+                    bestOdds = fdNhl[fdOdds];
+            } else {
+                printf("[WARN] Corresponding FD NHL odds not found: %d\n", fdOdds);
+            }
+        } else {
+            printf("FD %s not found: %s\n", league, eventData);
         }
     }
     child = child -> next;
@@ -79,20 +110,34 @@ void processChild(xmlNodePtr child, std::vector<std::pair<int, char*> >& data) {
         int dkOdds = atoi((char *)xmlNodeGetContent(child -> children -> children -> children -> children -> next)); // 12th index
         if (!strncmp(league, "NBA", 4)) {
             if (dkNba.count(dkOdds)) {
-                if (dkNba[dkOdds] > bestOdds) {
+                if (dkNba[dkOdds] > bestOdds)
                     bestOdds = dkNba[dkOdds];
-                }
             } else {
                 printf("[WARN] Corresponding DK NBA odds not found: %d\n", dkOdds);
             }
         } else if (!strncmp(league, "NFL", 4)) {
             if (dkNfl.count(dkOdds)) {
-                if (dkNfl[dkOdds] > bestOdds) {
+                if (dkNfl[dkOdds] > bestOdds)
                     bestOdds = dkNfl[dkOdds];
-                }
             } else {
                 printf("[WARN] Corresponding DK NFL odds not found: %d\n", dkOdds);
             } 
+        } else if (!strncmp(league, "NCAAF", 6)) {
+            if (dkNcaaf.count(dkOdds)) {
+                if (dkNcaaf[dkOdds] > bestOdds)
+                    bestOdds = dkNcaaf[dkOdds];
+            } else {
+                printf("[WARN] Corresponding DK NCAAF odds not found: %d\n", dkOdds);
+            } 
+        } else if (!strncmp(league, "NHL", 4)) {
+            if (dkNhl.count(dkOdds)) {
+                if (dkNhl[dkOdds] > bestOdds)
+                    bestOdds = dkNhl[dkOdds];
+            } else {
+                printf("[WARN] Corresponding DK NHL odds not found: %d\n", dkOdds);
+            } 
+        } else {
+            printf("DK %s not found: %s\n", league, eventData);
         }
     }
     int arb = fliffOdds + bestOdds;
@@ -169,9 +214,9 @@ int main() {
     xmlFreeDoc(doc);
     xmlCleanupParser();
 
+    putchar('\n');
     // sort vector
     std::sort(data.begin(), data.end());
-
     for (const std::pair<int, char*>& d : data)
         printf("%d\t%s\n", d.first, d.second);
 
