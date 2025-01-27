@@ -66,8 +66,10 @@ void processChild(xmlNodePtr child, std::vector<std::pair<int, char*> >& data) {
         int fdOdds = atoi((char *)xmlNodeGetContent(child -> children -> children -> children -> children -> next)); // 11th index
         if (!strncmp(league, "NBA", 4)) {
             if (fdNba.count(fdOdds)) {
-                if (fdNba[fdOdds] > bestOdds)
+                if (fdNba[fdOdds] > bestOdds) {
                     bestOdds = fdNba[fdOdds];
+                    *eventData = 1;
+                }
             } else {
                 printf("[WARN] Corresponding FD NBA odds not found: %d\n", fdOdds);
             }
@@ -217,8 +219,13 @@ int main() {
     putchar('\n');
     // sort vector
     std::sort(data.begin(), data.end());
-    for (const std::pair<int, char*>& d : data)
-        printf("%d\t%s\n", d.first, d.second);
-
+    for (const std::pair<int, char*>& d : data) {
+        if (*d.second == 1) {
+            printf("(FD) ");
+        } else {
+            printf("(DK) ");
+        }
+        printf("%d\t%s\n", d.first % 200, d.second);
+    }
     return 0;
 }
