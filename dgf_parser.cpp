@@ -7,10 +7,11 @@
 #include <unordered_map>
 
 // TO-DO:
-// ncaab maps
 // add pinnacle
+// ints to shorts (save space)
 
 #define THRESHOLD -15
+#define DEFAULT_ODDS -10000
 // all lines below this threshold (i.e. more negative than) will be ignored
 // decrease the threshold to see more potential arbs, increase to see less
 
@@ -52,10 +53,12 @@ void initMaps() {
 
 void processChild(xmlNodePtr child, std::vector<std::pair<int, char*> >& data) {
     child = child -> next;
-    int bestOdds = -10000;
+    int bestOdds = DEFAULT_ODDS;
+    int previousBest = DEFAULT_ODDS;
     char* eventData = (char*)xmlNodeGetContent(child); // 1st index
     child = child -> next;
     char* league = (char*)xmlNodeGetContent(child); // 2nd index
+    char site = 0;
     for (int i = 0; i < 4; i++)
         child = child -> next;
     int fliffOdds = atoi((char *)xmlNodeGetContent(child)); // 6th index
@@ -66,10 +69,8 @@ void processChild(xmlNodePtr child, std::vector<std::pair<int, char*> >& data) {
         int fdOdds = atoi((char *)xmlNodeGetContent(child -> children -> children -> children -> children -> next)); // 11th index
         if (!strncmp(league, "NBA", 4)) {
             if (fdNba.count(fdOdds)) {
-                if (fdNba[fdOdds] > bestOdds) {
+                if (fdNba[fdOdds] > bestOdds)
                     bestOdds = fdNba[fdOdds];
-                    *eventData = 1;
-                }
             } else {
                 printf("[WARN] Corresponding FD NBA odds not found: %d\n", fdOdds);
             }
@@ -106,14 +107,20 @@ void processChild(xmlNodePtr child, std::vector<std::pair<int, char*> >& data) {
         } else {
             printf("FD %s not found: %s\n", league, eventData);
         }
+        if (bestOdds != previousBest) {
+            site = 1;
+            previousBest = bestOdds;
+        }
     }
     child = child -> next;
     if (child -> children -> children) {
         int dkOdds = atoi((char *)xmlNodeGetContent(child -> children -> children -> children -> children -> next)); // 12th index
         if (!strncmp(league, "NBA", 4)) {
             if (dkNba.count(dkOdds)) {
-                if (dkNba[dkOdds] > bestOdds)
+                if (dkNba[dkOdds] > bestOdds) {
                     bestOdds = dkNba[dkOdds];
+                    site = 2;
+                }
             } else {
                 printf("[WARN] Corresponding DK NBA odds not found: %d\n", dkOdds);
             }
@@ -141,10 +148,14 @@ void processChild(xmlNodePtr child, std::vector<std::pair<int, char*> >& data) {
         } else {
             printf("DK %s not found: %s\n", league, eventData);
         }
+        if (bestOdds != previousBest) {
+            site = 2;
+            // no need to update previousBest
+        }
     }
     int arb = fliffOdds + bestOdds;
     if (arb >= THRESHOLD)
-        data.push_back(std::make_pair(arb, eventData));
+        data.push_back(std::make_pair((arb % 200 << 2) | site, eventData));
         // printf("market name: %s\nleague: %s\nfliff odds: %d\nbest odds: %d\n", eventData, league, fliffOdds, bestOdds);
         
     // this seems like a really goon way to traverse a linked list but idk if there's a better way
@@ -220,12 +231,12 @@ int main() {
     // sort vector
     std::sort(data.begin(), data.end());
     for (const std::pair<int, char*>& d : data) {
-        if (*d.second == 1) {
+        if (d.first & 1) {
             printf("(FD) ");
-        } else {
+        } else if (d.first & 2) {
             printf("(DK) ");
         }
-        printf("%d\t%s\n", d.first % 200, d.second);
+        printf("%d  \t%s\n", d.first >> 2, d.second);
     }
     return 0;
 }
