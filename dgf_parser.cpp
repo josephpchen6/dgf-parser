@@ -8,7 +8,8 @@
 
 // TO-DO:
 // add pinnacle
-// tennis, soccer
+// tennis, soccer (other?)
+// filter sports by in season (would it really save that much time/computing power)
 
 #define THRESHOLD -15
 #define DEFAULT_ODDS -10000
@@ -26,6 +27,7 @@ std::unordered_map<int, int> fdNhl;
 std::unordered_map<int, int> dkNba;
 std::unordered_map<int, int> dkNfl;
 std::unordered_map<int, int> dkNcaaf;
+std::unordered_map<int, int> dkNcaab;
 std::unordered_map<int, int> dkNhl;
 
 void initMap(std::unordered_map<int, int>& to_fill, const char* filename) {
@@ -48,6 +50,7 @@ void initMaps() {
     initMap(dkNba, "dknba.bin");
     initMap(dkNfl, "dknfl.bin");
     initMap(dkNcaaf, "dkncaaf.bin");
+    initMap(dkNcaab, "dkncaab.bin");
     initMap(dkNhl, "dknhl.bin");
 }
 
@@ -105,7 +108,7 @@ void processChild(xmlNodePtr child, std::vector<std::pair<int, char*> >& data) {
                 printf("[WARN] Corresponding FD NHL odds not found: %d\n", fdOdds);
             }
         } else {
-            printf("FD %s not found: %s\n", league, eventData);
+            // printf("FD %s not found: %s\n", league, eventData);
         }
         if (bestOdds != previousBest) {
             site = 1;
@@ -138,6 +141,13 @@ void processChild(xmlNodePtr child, std::vector<std::pair<int, char*> >& data) {
             } else {
                 printf("[WARN] Corresponding DK NCAAF odds not found: %d\n", dkOdds);
             } 
+        } else if (!strncmp(league, "NCAAB", 6)) {
+            if (dkNcaab.count(dkOdds)) {
+                if (dkNcaab[dkOdds] > bestOdds)
+                    bestOdds = dkNcaab[dkOdds];
+            } else {
+                printf("[WARN] Corresponding DK NCAAB odds not found: %d\n", dkOdds);
+            } 
         } else if (!strncmp(league, "NHL", 4)) {
             if (dkNhl.count(dkOdds)) {
                 if (dkNhl[dkOdds] > bestOdds)
@@ -146,7 +156,7 @@ void processChild(xmlNodePtr child, std::vector<std::pair<int, char*> >& data) {
                 printf("[WARN] Corresponding DK NHL odds not found: %d\n", dkOdds);
             } 
         } else {
-            printf("DK %s not found: %s\n", league, eventData);
+            // printf("DK %s not found: %s\n", league, eventData);
         }
         if (bestOdds != previousBest) {
             site = 2;
@@ -228,7 +238,7 @@ int main() {
     xmlFreeDoc(doc);
     xmlCleanupParser();
 
-    putchar('\n');
+    printf("\nOutput:\n");
     // sort vector
     std::sort(data.begin(), data.end());
     for (const std::pair<int, char*>& d : data) {

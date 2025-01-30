@@ -28,9 +28,12 @@ Copy this to line 200 of the script, inside the quotes.
    
    https://addons.mozilla.org/en-US/firefox/addon/copy-body-innerhtml/
 
+   (Source is [here](https://github.com/josephpchen6/copy_body_innerhtml))
+
 - Run the script; it will automatically parse the clipboard contents. (If you want to develop, then paste into sample.html; the script will read from there.)
 
 ## To-Do:
 
 Add Pinnacle
+
 Tennis, Soccer lines
