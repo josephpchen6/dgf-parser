@@ -30,6 +30,8 @@ std::unordered_map<int, int> dkNcaaf;
 std::unordered_map<int, int> dkNcaab;
 std::unordered_map<int, int> dkNhl;
 
+std::unordered_map<int, int> pinNba;
+
 void initMap(std::unordered_map<int, int>& to_fill, const char* filename) {
     int key, value;
     FILE* fp = fopen(filename, "rb");
@@ -52,6 +54,8 @@ void initMaps() {
     initMap(dkNcaaf, "dkncaaf.bin");
     initMap(dkNcaab, "dkncaab.bin");
     initMap(dkNhl, "dknhl.bin");
+
+    initMap(pinNba, "pinnba.bin");
 }
 
 void processChild(xmlNodePtr child, std::vector<std::pair<int, char*> >& data) {
@@ -65,10 +69,29 @@ void processChild(xmlNodePtr child, std::vector<std::pair<int, char*> >& data) {
     for (int i = 0; i < 4; i++)
         child = child -> next;
     int fliffOdds = atoi((char *)xmlNodeGetContent(child)); // 6th index
-    for (int i = 0; i < 5; i++)
+    for (int i = 0; i < 4; i++)
         child = child -> next;
-    // pinnacle would be the 10th index
-    if (child -> children -> children) {
+
+    if (child -> children -> children) { // process Pinnacle
+        int pinOdds = atoi((char *)xmlNodeGetContent(child -> children -> children -> children -> children -> next)); // 10th index
+        if (!strncmp(league, "NBA", 4)) {
+            if (pinNba.count(pinOdds)) {
+                if (pinNba[pinOdds] > bestOdds)
+                    bestOdds = pinNba[pinOdds];
+            } else {
+                printf("[WARN] Corresponding Pin NBA odds not found: %d\n", pinOdds);
+            }
+        } else {
+            // printf("Pin %s not found: %s\n", league, eventData);
+        }
+    }
+    child = child -> next;
+    if (bestOdds != previousBest) {
+        site = 1;
+        previousBest = bestOdds;
+    }
+
+    if (child -> children -> children) { // process FanDuel
         int fdOdds = atoi((char *)xmlNodeGetContent(child -> children -> children -> children -> children -> next)); // 11th index
         if (!strncmp(league, "NBA", 4)) {
             if (fdNba.count(fdOdds)) {
@@ -111,18 +134,18 @@ void processChild(xmlNodePtr child, std::vector<std::pair<int, char*> >& data) {
             // printf("FD %s not found: %s\n", league, eventData);
         }
         if (bestOdds != previousBest) {
-            site = 1;
+            site = 2;
             previousBest = bestOdds;
         }
     }
     child = child -> next;
-    if (child -> children -> children) {
+
+    if (child -> children -> children) { // process DraftKings
         int dkOdds = atoi((char *)xmlNodeGetContent(child -> children -> children -> children -> children -> next)); // 12th index
         if (!strncmp(league, "NBA", 4)) {
             if (dkNba.count(dkOdds)) {
                 if (dkNba[dkOdds] > bestOdds) {
                     bestOdds = dkNba[dkOdds];
-                    site = 2;
                 }
             } else {
                 printf("[WARN] Corresponding DK NBA odds not found: %d\n", dkOdds);
@@ -159,16 +182,15 @@ void processChild(xmlNodePtr child, std::vector<std::pair<int, char*> >& data) {
             // printf("DK %s not found: %s\n", league, eventData);
         }
         if (bestOdds != previousBest) {
-            site = 2;
+            site = 4;
             // no need to update previousBest
         }
     }
+
     int arb = fliffOdds + bestOdds;
     if (arb >= THRESHOLD)
-        data.push_back(std::make_pair((arb % 200 << 2) | site, eventData));
+        data.push_back(std::make_pair((arb % 200 << 3) | site, eventData));
         // printf("market name: %s\nleague: %s\nfliff odds: %d\nbest odds: %d\n", eventData, league, fliffOdds, bestOdds);
-        
-    // this seems like a really goon way to traverse a linked list but idk if there's a better way
 }
 
 // Custom read function to read from a FILE pointer
@@ -243,11 +265,13 @@ int main() {
     std::sort(data.begin(), data.end());
     for (const std::pair<int, char*>& d : data) {
         if (d.first & 1) {
-            printf("(FD) ");
+            printf("(Pin) ");
         } else if (d.first & 2) {
+            printf("(FD) ");
+        } else if (d.first & 4) {
             printf("(DK) ");
         }
-        printf("%d  \t%s\n", d.first >> 2, d.second);
+        printf("%d  \t%s\n", d.first >> 3, d.second);
     }
     return 0;
 }
