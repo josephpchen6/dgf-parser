@@ -8,7 +8,7 @@
 
 // TO-DO:
 // add pinnacle
-// ints to shorts (save space)
+// tennis, soccer
 
 #define THRESHOLD -15
 #define DEFAULT_ODDS -10000
@@ -197,7 +197,8 @@ int main() {
         return 1;
     }
 
-    const char *xpathExpr = "/html/body/div[1]/div/div/main/div/div[2]/div/div/div/table/tbody";
+    const char *xpathExpr = "/html/body/div[4]/div/div/main/div/div[2]/div/div/div/table/tbody";
+    // EDIT THIS LINE: SEE README
     xmlXPathObjectPtr xpathObj = xmlXPathEvalExpression((const xmlChar *)xpathExpr, xpathCtx);
     if (xpathObj == NULL) {
         fprintf(stderr, "Error: Unable to evaluate XPath expression\n");
