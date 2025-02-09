@@ -34,6 +34,10 @@ Copy this to line 200 of the script, inside the quotes.
 
 ## To-Do:
 
-Add Pinnacle
+Better line exists/EV on all sites flag
+
+Add more Pinnacle leagues
 
 Tennis, Soccer lines
+
+Player blacklists?
